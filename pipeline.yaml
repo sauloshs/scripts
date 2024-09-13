@@ -1,0 +1,130 @@
+trigger: none
+
+schedules:
+- cron: "15 0 17 9 *"
+  displayName: "Agendamento para 17 de Setembro às 00:15"
+  branches:
+    include:
+    - main
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  RESOURCE_GROUP: 'meuGrupoDeRecursos'
+  CLUSTER_NAME: 'meuClusterAKS'
+  BACKUP_NODEPOOL: 'irisbackup'
+  NODEPOOL: 'iris'
+  KUBERNETES_VERSION: '1.23.5'  # Exemplo de versão do Kubernetes
+  MAX_PODS: 110
+  MAX_SURGE: '1'
+  NODE_COUNT: 3
+  DISK_SIZE: 512
+  OS_TYPE: 'Linux'
+  ZONES: '1 2 3'
+  LABELS: 'application=iris'
+  NODE_TAINTS: 'role=iris:NoSchedule'
+  TAGS: 'ccname=myCCName,ccid=myCCID,teamname=myTeamName,owner=myOwner,classification=myClassification,criticality=myCriticality,enviroment=myEnvironment,ticktid=myTicktID'
+  BACKUP_VM_SIZE: 'Standard_DS2_v2'
+  NODE_VM_SIZE: 'Standard_DS3_v2'
+  AZURE_SUBSCRIPTION: 'myAzureSubscription'  # Nome da conexão de serviço
+
+stages:
+- stage: ManageNodePools
+  jobs:
+  - job: CreateBackupNodePool
+    displayName: 'Criar nodepool de backup'
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: $(AZURE_SUBSCRIPTION)
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          az aks nodepool add \
+            --resource-group $(RESOURCE_GROUP) \
+            --cluster-name $(CLUSTER_NAME) \
+            --name $(BACKUP_NODEPOOL) \
+            --node-count $(NODE_COUNT) \
+            --kubernetes-version $(KUBERNETES_VERSION) \
+            --max-pods $(MAX_PODS) \
+            --max-surge $(MAX_SURGE) \
+            --node-vm-size $(BACKUP_VM_SIZE) \
+            --os-type $(OS_TYPE) \
+            --zones $(ZONES) \
+            --labels $(LABELS) \
+            --node-taints $(NODE_TAINTS) \
+            --node-osdisk-size $(DISK_SIZE) \
+            --tags $(TAGS)
+      displayName: 'Adicionar nodepool de backup'
+
+  - job: Sleep1
+    displayName: 'Aguardar 15 minutos'
+    steps:
+    - script: sleep 900
+      displayName: 'Sleep de 15 minutos'
+
+  - job: DeleteNodePool
+    displayName: 'Deletar nodepool iris'
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: $(AZURE_SUBSCRIPTION)
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          az aks nodepool delete \
+            --resource-group $(RESOURCE_GROUP) \
+            --cluster-name $(CLUSTER_NAME) \
+            --name $(NODEPOOL) \
+            --no-wait \
+            --yes
+      displayName: 'Deletar nodepool iris'
+
+  - job: CreateNodePool
+    displayName: 'Criar nodepool iris'
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: $(AZURE_SUBSCRIPTION)
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          az aks nodepool add \
+            --resource-group $(RESOURCE_GROUP) \
+            --cluster-name $(CLUSTER_NAME) \
+            --name $(NODEPOOL) \
+            --node-count $(NODE_COUNT) \
+            --kubernetes-version $(KUBERNETES_VERSION) \
+            --max-pods $(MAX_PODS) \
+            --max-surge $(MAX_SURGE) \
+            --node-vm-size $(NODE_VM_SIZE) \
+            --os-type $(OS_TYPE) \
+            --zones $(ZONES) \
+            --labels $(LABELS) \
+            --node-taints $(NODE_TAINTS) \
+            --node-osdisk-size $(DISK_SIZE) \
+            --tags $(TAGS)
+      displayName: 'Adicionar nodepool iris'
+
+  - job: Sleep2
+    displayName: 'Aguardar 15 minutos'
+    steps:
+    - script: sleep 900
+      displayName: 'Sleep de 15 minutos'
+
+  - job: ScaleDownBackupNodePool
+    displayName: 'Escalar nodepool de backup para zero'
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: $(AZURE_SUBSCRIPTION)
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          az aks nodepool scale \
+            --resource-group $(RESOURCE_GROUP) \
+            --cluster-name $(CLUSTER_NAME) \
+            --name $(BACKUP_NODEPOOL) \
+            --node-count 0
+      displayName: 'Escalar nodepool de backup para zero'
