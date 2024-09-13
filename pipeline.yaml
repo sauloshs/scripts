@@ -78,7 +78,8 @@ stages:
             --cluster-name $(CLUSTER_NAME) \
             --name $(NODEPOOL) \
             --no-wait \
-            --yes
+            --yes \
+            --ignore-pod-disruption-budget
       displayName: 'Deletar nodepool iris'
 
   - job: CreateNodePool
