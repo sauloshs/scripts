@@ -30,9 +30,9 @@ variables:
   AZURE_SUBSCRIPTION: 'myAzureSubscription'  # Nome da conexão de serviço
 
 stages:
-- stage: ManageNodePools
+- stage: CreateBackupNodePool
   jobs:
-  - job: CreateBackupNodePool
+  - job: CreateBackupNodePoolJob
     displayName: 'Criar nodepool de backup'
     steps:
     - task: AzureCLI@2
@@ -58,13 +58,17 @@ stages:
             --tags $(TAGS)
       displayName: 'Adicionar nodepool de backup'
 
-  - job: Sleep1
+- stage: Sleep1
+  jobs:
+  - job: Sleep1Job
     displayName: 'Aguardar 15 minutos'
     steps:
-    - script: sleep 900
+    - script: sleep 300
       displayName: 'Sleep de 15 minutos'
 
-  - job: DeleteNodePool
+- stage: DeleteNodePool
+  jobs:
+  - job: DeleteNodePoolJob
     displayName: 'Deletar nodepool iris'
     steps:
     - task: AzureCLI@2
@@ -78,11 +82,12 @@ stages:
             --cluster-name $(CLUSTER_NAME) \
             --name $(NODEPOOL) \
             --no-wait \
-            --yes \
-            --ignore-pod-disruption-budget
+            --yes
       displayName: 'Deletar nodepool iris'
 
-  - job: CreateNodePool
+- stage: CreateNodePool
+  jobs:
+  - job: CreateNodePoolJob
     displayName: 'Criar nodepool iris'
     steps:
     - task: AzureCLI@2
@@ -108,13 +113,17 @@ stages:
             --tags $(TAGS)
       displayName: 'Adicionar nodepool iris'
 
-  - job: Sleep2
+- stage: Sleep2
+  jobs:
+  - job: Sleep2Job
     displayName: 'Aguardar 15 minutos'
     steps:
-    - script: sleep 900
+    - script: sleep 300
       displayName: 'Sleep de 15 minutos'
 
-  - job: ScaleDownBackupNodePool
+- stage: ScaleDownBackupNodePool
+  jobs:
+  - job: ScaleDownBackupNodePoolJob
     displayName: 'Escalar nodepool de backup para zero'
     steps:
     - task: AzureCLI@2
